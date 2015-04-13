@@ -1,9 +1,10 @@
-var cities = null;
 
-cities = JSON.parse(requestCities());
+// Initialize user and survey forms
+var cities = JSON.parse(requestCities());
 renderUserForm();
 renderSurveyForm();
 
+// Sends an HTTP request for the cities in the database.
 function requestCities() {
 
     var httpRequest = new XMLHttpRequest();
@@ -13,11 +14,16 @@ function requestCities() {
     return httpRequest.responseText;
 }
 
+// Builds the form elements for input about the user
 function renderUserForm() {
 
     var userDiv = document.getElementById("user_row");
+    userDiv.children[0].innerHTML = "Favorite City";
+    userDiv.children[1].innerHTML = "Enter your name and email and then select your favorite of the three cities listed below.";
+
     var userForm = document.createElement("form");
     userForm.className = "navbar-form";
+    userForm.id = "user_form";
 
     var userFormGroup1 = document.createElement("div");
     userFormGroup1.className = "form-group";
@@ -42,6 +48,7 @@ function renderUserForm() {
     userDiv.appendChild(userForm);
 }
 
+// Builds the form elements for the user's vote
 function renderSurveyForm() {
 
     var surveyDiv = document.getElementById("survey_row");
@@ -55,6 +62,9 @@ function renderSurveyForm() {
     }
 }
 
+// Appends a voting button for a city to a div.
+// city: JSON object representing a city object
+// cityDiv: Div to which the button is appended
 function appendCityButton(city, cityDiv) {
 
     var hDiv = document.createElement("h2");
@@ -79,12 +89,50 @@ function appendCityButton(city, cityDiv) {
     cityDiv.appendChild(paragraph);
 }
 
+// Builds the vote distribution table.
+// response: JSON string representing the HTTP response body
 function renderVotesTable(response) {
 
-    console.log("response: " + response);
-    //TODO: build votes table
+    //console.log("response: " + response);
+
+    var oldElem = document.getElementById("survey_row");
+    var votesDiv = oldElem.parentNode;
+
+    votesHeader = document.createElement("h3");
+    votesHeader.innerHTML = "Vote Distribution";
+    votesDiv.replaceChild(votesHeader, oldElem);
+
+    var votes = JSON.parse(response);
+    for (var i = 0; i < votes.length; i++) {
+
+        renderVotesTableRow(votes[i].city, votes[i].state, votes[i].count, votesDiv);
+    }
 }
 
+// Appends a table row to the distribution table.
+// city: Name of city
+// state: Name of state
+// count: Number of votes for the city
+// parent: Parent node to which the row is appended
+function renderVotesTableRow(city, state, count, parent) {
+
+    rowDiv = document.createElement("div");
+    rowDiv.className = "row";
+    parent.appendChild(rowDiv);
+
+    cityCellDiv = document.createElement("div");
+    cityCellDiv.className = "col-md-4";
+    cityCellDiv.innerHTML = city + ", " + state;
+    countCellDiv = document.createElement("div");
+    countCellDiv.className = "col-md-1";
+    countCellDiv.innerHTML = count;
+
+    rowDiv.appendChild(cityCellDiv);
+    rowDiv.appendChild(countCellDiv);
+}
+
+// Sends a HTTP POST request with the user's vote.
+// city: City object from the vote's onClick closure
 function postVote(city) {
 
     var voteJSON = {"user" : document.getElementById("user_name").value,
@@ -100,6 +148,59 @@ function postVote(city) {
     console.log("vote sent: " + jsonString);
     console.log("json length: " + jsonString.length);
 
-    var response = httpRequest.responseText;
-    renderVotesTable(response);
+    if (httpRequest.status == 200) {
+
+        renderVotesTable(httpRequest.responseText);
+    } else {
+
+        displayError(httpRequest.status, httpRequest.responseText);
+    }
+}
+
+// Replaces the greeting with an error message and restart button.
+// status: Response status code
+// message: Response error message
+function displayError(status, message) {
+
+    console.log("error: " + status + ", " + message);
+
+    // Replace the survey form
+    var oldElem = document.getElementById("survey_row");
+    var parent = oldElem.parentNode;
+    var newDiv = document.createElement("div");
+    newDiv.className = "row";
+    newDiv.id = "survey_row";
+    parent.replaceChild(newDiv, oldElem);
+
+    // Replace the user form with a restart button
+    var oldUserForm = document.getElementById("user_form");
+    while (oldUserForm.firstChild) {
+
+        oldUserForm.removeChild(oldUserForm.firstChild);
+    }
+    var errorForm = document.createElement("form");
+    var errorParent = oldUserForm.parentNode;
+    errorParent.replaceChild(errorForm, oldUserForm);
+
+    var userFormGroup = document.createElement("div");
+    userFormGroup.className = "form-group";
+    var button = document.createElement("input");
+    button.className = "btn btn-primary btn-lg";
+    button.value = "Try again";
+    button.onclick = reloadForms;
+    userFormGroup.appendChild(button);
+    errorForm.appendChild(userFormGroup);
+
+    // Replace message with error
+    errorForm.parentNode.children[0].innerHTML = "Error: " + status;
+    errorForm.parentNode.children[1].innerHTML = message;
+}
+
+// Removes error message elements and reloads the user and survey forms.
+function reloadForms() {
+
+    var userDiv = document.getElementById("user_row");
+    userDiv.removeChild(userDiv.lastChild);
+    renderUserForm();
+    renderSurveyForm();
 }
