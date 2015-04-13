@@ -1,4 +1,4 @@
-from flask import Flask, request, url_for, redirect, render_template
+from flask import Flask, request, Response, render_template
 from flask_sqlalchemy import SQLAlchemy
 import json
 from sqlalchemy import UniqueConstraint
@@ -40,14 +40,17 @@ def get_cities():
 
 @survey_app.route("/vote", methods=['POST'])
 def route_vote():
-
-    user_name = request.form['user']
-    user_email = request.form['email']
-    user_id = db.session.add(User(user_name, user_email))
+    req_json = request.get_json()
+    user_name = req_json['user']
+    user_email = req_json['email']
+    user = User(user_name, user_email)
+    db.session.add(user)
+    db.session.commit()
+    user_id = user.user_id
     print "user id: ", user_id
     # TODO: check user_id for None
 
-    city_id = request.form['city']
+    city_id = req_json['city']
     # Retrieve the city ID from the City table
     assert city_id is not None # TODO: remove after testing
 
@@ -56,7 +59,21 @@ def route_vote():
     db.session.add(vote)
     db.session.commit()
 
-    return #TODO: return vote counts
+    vote_data = Vote.query.all()
+    votes_json = {}
+    for v in vote_data:
+        if v.city_id not in votes_json:
+            city_dict = {}
+            city = City.query.filter_by(city_id=v.city_id).first()
+            city_dict["count"] = 0
+            city_dict["city"] = city.city
+            city_dict["state"] = city.state
+            votes_json[v.city_id] = city_dict
+        votes_json[v.city_id]["count"] += 1
+    response = Response(json.dumps(votes_json.values()), status=200, content_type="application/json")
+    survey_app.process_response(response)
+
+    return response
 
 
 class User(db.Model):

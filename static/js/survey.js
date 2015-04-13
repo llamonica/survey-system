@@ -79,8 +79,9 @@ function appendCityButton(city, cityDiv) {
     cityDiv.appendChild(paragraph);
 }
 
-function renderVotesTable() {
+function renderVotesTable(response) {
 
+    console.log("response: " + response);
     //TODO: build votes table
 }
 
@@ -100,5 +101,5 @@ function postVote(city) {
     console.log("json length: " + jsonString.length);
 
     var response = httpRequest.responseText;
-    renderVotesTable();
+    renderVotesTable(response);
 }
